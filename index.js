@@ -1,24 +1,44 @@
-//I would have loved to write some tests for this 
+//I would have loved to write some tests for this
 //excercise, but external libraries were explicitly prohibited! D:
+var parentDiv;
 document.addEventListener('DOMContentLoaded', function() {
-  var submitButton = document.querySelectorAll("button[type=submit]")[0];
-  var addButton = document.querySelectorAll("button[class=add]")[0]
-  submitButton.addEventListener('click', function(){return submitHousehold();});
+  parentDiv = document.querySelector("div.builder");
+  var submitButton = document.querySelector("button[type=submit]");
+  var addButton = document.querySelector("button[class=add]");
+  //Prevent Form submit (page reload) on button click. This element should have a type declared anyways
+  addButton.type = 'button'
+
+  submitButton.addEventListener('click', function(){return submitHousehold(event);});
   addButton.addEventListener('click', function(){return addPerson();});
 });
-function submitHousehold(){
-  console.log('SUBMIT BUTTON CLICKED');
-  //TODO create an ajax request to a fake server. Send data as JSON in POST request use debug DOM element
+function submitHousehold(event){
+  event.preventDefault(); //stop page reload
+  var household = [];
+  var listItems = document.querySelector('ol.household').children;
+  for(i in listItems){
+    var item = listItems[i];
+    if(item instanceof HTMLElement){
+      var person = {age: item.querySelector('span.age').innerHTML,
+                    relationship: item.querySelector('span.relationship').innerHTML,
+                    smoker: item.querySelector('span.smoker').innerHTML};
+      household.push(person);
+    }
+  }
+
+  var debugEle = document.querySelector('pre.debug');
+  var displayData = 'JSON: ' + household + '</br>' +
+                    'Stringified: ' + JSON.stringify(household);
+  debugEle.innerHTML = displayData;
+  debugEle.style.display = 'Block';
 }
 
 function addPerson(){
-  var parentDiv = document.querySelector("div.builder");
-  var personParams = {age: parentDiv.querySelector("input[name=age]").value, 
-                      relationship: parentDiv.querySelector("select[name=rel]").value, 
-                      isSmoker: parentDiv.querySelector("input[name=smoker]").value};
-                      
+  var personParams = {age: parentDiv.querySelector("input[name=age]").value,
+                      relationship: parentDiv.querySelector("select[name=rel]").value,
+                      isSmoker: parentDiv.querySelector("input[name=smoker]").checked};
+
   var errors = validatePerson(personParams);
-  if(errors){
+  if(errors.length){
     displayErrors(errors);
     return;
   }
@@ -26,55 +46,68 @@ function addPerson(){
 }
 
 function removePerson(event){
-  var parentList = document.getElementById('hhList');
-  var deleteTarget = findParentWithClass(event.target, 'hhMemberItem');
+  var parentList = document.querySelector('ol.household');
+  var deleteTarget = findParentWithClass(event.target, 'hhPersonItem');
   parentList.removeChild(deleteTarget);
 }
 
 function validatePerson(personParams){
+  clearErrors();
   var errors = [];
   var age = parseInt(personParams.age, 10);
   if(!age || age <= 0){
-    errors << "Please enter a valid age!";
+    errors.push("Please enter a valid age!");
   }
-  
+
   if(!personParams.relationship){
-    errors << "Please select a relationship!";
+    errors.push("Please select a relationship!");
   }
-  
+
   return errors;
 }
 
 function displayErrors(errors){
-  var errorDiv = document.querySelector("div#errors");
+  var errorDiv = document.querySelector("div.errors");
   if(!errorDiv){
     initializeErrorsContainer();
-    errorDiv = document.querySelector("div#errors");
+    errorDiv = document.querySelector("div.errors");
   }
+  clearErrors();
   for(i in errors){
-    errorDiv.innerHtml = '<ul><li>'+error[i]+'</li></ul>';
-    
+    var errorMsg = document.createElement('SPAN');
+    errorMsg.innerHTML = errors[i] + '</br>';
+    errorDiv.appendChild(errorMsg);
   }
 
 }
 
-function appendPersonToHouseHold(){
-  console.log('Adding Person!');
-  //TODO check if a div has been created for the list of members in a HH
-
-  //TODO if not, invoke initializeHouseHoldContainer
-  //TODO append html to the ordered list with #householdList id
-  //TODO add X button for deleting household members; invoke bindRemovePerson
+function clearErrors(){
+  var errorDiv = document.querySelector("div.errors");
+  if(errorDiv){
+    errorDiv.innerHTML = '';
+  }
 }
 
-function initializeHouseholdContainer(){
-  //TODO add html <div id="householdContainer"><ol id="hhList"></ol></div>
+function appendPersonToHouseHold(personParams){
+  var hhList = document.querySelector('ol.household');
+  var personItem = document.createElement('LI');
+  personItem.className = 'hhPersonItem'
+  var personDetails = 'Age: <span class="age">' + personParams.age + '</span>,' +
+                      ' Relationship: <span class="relationship">' + personParams.relationship + '</span>,' +
+                      ' Smoker: <span class="smoker">' + personParams.isSmoker + '</span>&nbsp;';
+  personItem.innerHTML = personDetails;
 
+  var deleteButton = document.createElement('BUTTON');
+  deleteButton.innerHTML = 'X';
+  personItem.appendChild(deleteButton);
+  deleteButton.addEventListener('click', function(){return removePerson(event);});
+
+  hhList.appendChild(personItem);
 }
 
 function initializeErrorsContainer(){
-  var parentDiv = document.querySelector("div.builder"); //TODO move this to onLoad as global variable
-  var errContainer = document.createElement('DIV')
+  var errContainer = document.createElement('DIV');
+  errContainer.className = 'errors';
   parentDiv.insertBefore(errContainer, parentDiv.childNodes[0]);
 }
 
